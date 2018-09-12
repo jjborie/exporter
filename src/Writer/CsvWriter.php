@@ -12,6 +12,7 @@
 namespace Exporter\Writer;
 
 use Exporter\Exception\InvalidDataFormatException;
+use Ajgl\Csv\Rfc;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
@@ -145,7 +146,9 @@ class CsvWriter implements TypedWriterInterface
             ++$this->position;
         }
 
-        $result = @fputcsv($this->file, $data, $this->delimiter, $this->enclosure, $this->escape);
+//        $result = @fputcsv($this->file, $data, $this->delimiter, $this->enclosure, $this->escape);
+        $result = Rfc\fputcsv($this->file, $data, $this->delimiter, $this->enclosure, $this->escape);
+
 
         if (!$result) {
             throw new InvalidDataFormatException();
