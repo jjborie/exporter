@@ -91,12 +91,6 @@ class CsvWriter implements TypedWriterInterface
         $this->position = 0;
         $this->withBom = $withBom;
 
-        // Warning: If your CSV document was created or is read on a Macintosh computer,
-        // add the following lines before using the library to help PHP detect line ending.
-        if (!ini_get("auto_detect_line_endings")) {
-            ini_set("auto_detect_line_endings", '1');
-        }
-
         if (is_file($filename)) {
             throw new \RuntimeException(sprintf('The file %s already exist', $filename));
         }
@@ -123,7 +117,8 @@ class CsvWriter implements TypedWriterInterface
      */
     public function open()
     {
-        $this->file = Writer::createFromFileObject(new SplTempFileObject());
+        $this->file = Writer::createFromPath($this->filename);
+        $this->file->setOutputBOM(Writer::BOM_UTF8); //adding the BOM sequence on output
     }
 
     /**
@@ -131,7 +126,6 @@ class CsvWriter implements TypedWriterInterface
      */
     public function close()
     {
-        $this->file->output($this->filename);
     }
 
     /**
@@ -145,12 +139,7 @@ class CsvWriter implements TypedWriterInterface
             ++$this->position;
         }
 
-//        $result = @fputcsv($this->file, $data, $this->delimiter, $this->enclosure, $this->escape);
-        $csv->insertOne($data);
-
-        if (!$result) {
-            throw new InvalidDataFormatException();
-        }
+        $this->file->insertOne($data);
 
         ++$this->position;
     }
@@ -165,6 +154,6 @@ class CsvWriter implements TypedWriterInterface
             $headers[] = $header;
         }
 
-        $csv->insertOne($headers);
+        $this->file->insertOne($headers);
     }
 }
