@@ -12,7 +12,7 @@
 namespace Exporter\Writer;
 
 use Exporter\Exception\InvalidDataFormatException;
-use Ajgl\Csv\Rfc;
+use League\Csv\Writer;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
@@ -91,6 +91,12 @@ class CsvWriter implements TypedWriterInterface
         $this->position = 0;
         $this->withBom = $withBom;
 
+        // Warning: If your CSV document was created or is read on a Macintosh computer,
+        // add the following lines before using the library to help PHP detect line ending.
+        if (!ini_get("auto_detect_line_endings")) {
+            ini_set("auto_detect_line_endings", '1');
+        }
+
         if (is_file($filename)) {
             throw new \RuntimeException(sprintf('The file %s already exist', $filename));
         }
@@ -117,14 +123,7 @@ class CsvWriter implements TypedWriterInterface
      */
     public function open()
     {
-        $this->file = fopen($this->filename, 'wb', false);
-        if ("\n" !== $this->terminate) {
-            stream_filter_register('filterTerminate', CsvWriterTerminate::class);
-            stream_filter_append($this->file, 'filterTerminate', STREAM_FILTER_WRITE, ['terminate' => $this->terminate]);
-        }
-        if (true === $this->withBom) {
-            fprintf($this->file, \chr(0xEF).\chr(0xBB).\chr(0xBF));
-        }
+        $this->file = Writer::createFromFileObject(new SplTempFileObject());
     }
 
     /**
@@ -132,7 +131,7 @@ class CsvWriter implements TypedWriterInterface
      */
     public function close()
     {
-        fclose($this->file);
+        $this->file->output($this->filename);
     }
 
     /**
@@ -147,8 +146,7 @@ class CsvWriter implements TypedWriterInterface
         }
 
 //        $result = @fputcsv($this->file, $data, $this->delimiter, $this->enclosure, $this->escape);
-        $result = Rfc\fputcsv($this->file, $data, $this->delimiter, $this->enclosure, $this->escape);
-
+        $csv->insertOne($data);
 
         if (!$result) {
             throw new InvalidDataFormatException();
@@ -167,6 +165,6 @@ class CsvWriter implements TypedWriterInterface
             $headers[] = $header;
         }
 
-        fputcsv($this->file, $headers, $this->delimiter, $this->enclosure, $this->escape);
+        $csv->insertOne($headers);
     }
 }
