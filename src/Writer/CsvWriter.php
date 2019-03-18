@@ -12,6 +12,7 @@
 namespace Exporter\Writer;
 
 use Exporter\Exception\InvalidDataFormatException;
+use League\Csv\Writer;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
@@ -116,14 +117,8 @@ class CsvWriter implements TypedWriterInterface
      */
     public function open()
     {
-        $this->file = fopen($this->filename, 'wb', false);
-        if ("\n" !== $this->terminate) {
-            stream_filter_register('filterTerminate', CsvWriterTerminate::class);
-            stream_filter_append($this->file, 'filterTerminate', STREAM_FILTER_WRITE, ['terminate' => $this->terminate]);
-        }
-        if (true === $this->withBom) {
-            fprintf($this->file, \chr(0xEF).\chr(0xBB).\chr(0xBF));
-        }
+        $this->file = Writer::createFromPath($this->filename);
+        $this->file->setOutputBOM(Writer::BOM_UTF8); //adding the BOM sequence on output
     }
 
     /**
@@ -131,7 +126,6 @@ class CsvWriter implements TypedWriterInterface
      */
     public function close()
     {
-        fclose($this->file);
     }
 
     /**
@@ -145,11 +139,7 @@ class CsvWriter implements TypedWriterInterface
             ++$this->position;
         }
 
-        $result = @fputcsv($this->file, $data, $this->delimiter, $this->enclosure, $this->escape);
-
-        if (!$result) {
-            throw new InvalidDataFormatException();
-        }
+        $this->file->insertOne($data);
 
         ++$this->position;
     }
@@ -164,6 +154,6 @@ class CsvWriter implements TypedWriterInterface
             $headers[] = $header;
         }
 
-        fputcsv($this->file, $headers, $this->delimiter, $this->enclosure, $this->escape);
+        $this->file->insertOne($headers);
     }
 }
